@@ -286,4 +286,23 @@ object collectionSpec extends Specification("Shape collection") {
             }
         }
     }
+    "Collections with embedded arrays of arrays of embedded" should {
+      import ArrayOfEmbeddedArray._
+
+      val objs = mongo.getCollection("objs") of ArrayOfEmbeddedModel
+
+      doBefore { objs.drop; mongo.requestStart }
+      doAfter  { mongo.requestDone; objs.drop }
+
+      "store & retrieve" in {
+        val embArray = new ArrayModel(100, CaseUser(Const) :: Nil )
+        objs << new ArrayOfEmbeddedModel(embArray :: Nil)
+
+        objs must haveSize(1)
+
+        objs.headOption must beSome[ArrayOfEmbeddedModel].which { aem =>
+          aem.array.size == 1 && aem.array(0).id == 100
+        }
+      }
+    }
 }

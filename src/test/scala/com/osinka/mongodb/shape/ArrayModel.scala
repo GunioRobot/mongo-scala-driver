@@ -43,26 +43,6 @@ object ArrayOfInt {
     }
 }
 
-object ArrayOfEmbedded {
-    class ArrayModel(val id: Int, val users: List[CaseUser])
-
-    object ArrayModel extends ObjectShape[ArrayModel] { shape =>
-        lazy val id = Field.scalar("id", _.id)
-
-        object users extends ArrayEmbeddedField[CaseUser]("users", _.users, None) with CaseUserIn[ArrayModel]
-//
-//   same as
-//
-//        object users extends MongoArray[CaseUser] with ArrayFieldModifyOp[CaseUser] with EmbeddedContent[CaseUser] with CaseUserIn[ArrayModel] {
-//            override val mongoFieldName = "users"
-//            override val rep = shape.Represented.by[Seq[CaseUser]]( _.users, Some( (x: ArrayModel, l: Seq[CaseUser]) => x.users = l.toList ))
-//        }
-
-        lazy val * = List(id, users)
-        override def factory(dbo: DBObject) = for {id(_id) <- Some(dbo); users(_users) <- Some(dbo)} yield new ArrayModel(_id, _users.toList)
-    }
-}
-
 object ArrayOfRef {
     class ArrayModel(val id: Int) {
         var users: List[CaseUser] = Nil
@@ -84,4 +64,21 @@ object ArrayOfRef {
         lazy val * = List(id, users)
         override def factory(dbo: DBObject) = for {id(i) <- Some(dbo)} yield new ArrayModel(i)
     }
+}
+
+trait ArrayOfEmbeddedTrait {
+    class ArrayModel(val id: Int, val users: List[CaseUser])
+
+    trait ArrayModelIn[T] extends ObjectIn[ArrayModel, T] {
+      lazy val id = Field.scalar("id", _.id)
+
+      object users extends ArrayEmbeddedField[CaseUser]("users", _.users, None) with CaseUserIn[T]
+
+      lazy val * = List(id, users)
+      override def factory(dbo: DBObject) = for {_id <- id.from(dbo); users(_users) <- Some(dbo)} yield new ArrayModel(_id, _users.toList)
+    }
+}
+
+object ArrayOfEmbedded extends ArrayOfEmbeddedTrait {
+    object ArrayModel extends ObjectShape[ArrayModel] with ArrayModelIn[ArrayModel]
 }
